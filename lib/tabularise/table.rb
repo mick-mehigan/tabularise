@@ -1,5 +1,11 @@
 module Tabularise
   class Table
+    attr_reader :footer
+
+    def initialize(options={})
+      @footer = options[:footer]
+    end
+
     def add_line(*args)
       table << args
     end
@@ -9,6 +15,7 @@ module Tabularise
       str = ""
       str << top_line(dims)
       table.each_with_index do |row, index|
+        str << top_line(dims) if footer && (index == (table.length - 1))
         str << pad_line(dims, row, "|", " ")
         str << top_line(dims) if(0 == index)
       end
@@ -21,14 +28,19 @@ module Tabularise
       pad_line(dims, [], "+", "-")
     end
 
+    def delimited(num)
+      num.to_s.reverse.gsub(/...(?=.)/,'\&,').reverse
+    end
+
     def pad_line(dims, row, stopping_char, padding_char)
       str = ""
       dims.each_with_index do |width, index|
         str << stopping_char << padding_char
         item = row[index].to_s
         if(row[index].is_a?(Numeric))
-          str << (padding_char * (width - item.length))
-          str << item
+          item_s = delimited(item)
+          str << (padding_char * (width - item_s.length))
+          str << item_s
           str << padding_char
         else
           str << item
@@ -48,7 +60,13 @@ module Tabularise
     end
 
     def column_width(index)
-      table.max_by{|row| row[index].to_s.length}[index].to_s.length
+      table.max_by do |row|
+        if row[index].is_a?(Numeric)
+          delimited(row[index]).length
+        else
+          row[index].to_s.length
+        end
+      end[index].to_s.length
     end
 
     def table
